@@ -9,7 +9,7 @@
 .grid>*{min-width:0}.chart-wrap{overflow:hidden;min-width:0}canvas{min-width:0}</style>
 </head>
 <body>
-<header><h1>倪俊毅基金测试</h1><div class="live">成交价 · 买卖五档 · 每秒尝试刷新</div></header>
+<header><h1>倪俊毅基金测试</h1><a href="search.html" style="font-size:14px;border:1px solid var(--border);padding:8px 14px;border-radius:3px">行情查询</a><div class="live">成交价 · 买卖五档 · 每秒尝试刷新</div></header>
 <main>
 <a href="index.html" style="display:inline-block;color:var(--muted);text-decoration:none;margin-bottom:20px">← 返回我的持仓</a><div class="ticker"><span id="fundName">基金行情</span><span class="code" id="fundCode"></span></div>
 <div class="quote"><div><div class="label" id="priceLabel">最新成交价 / 元</div><div id="price">--</div></div><div><div id="change">--</div><div id="quoteTime">等待行情连接</div></div></div>
@@ -19,6 +19,7 @@
 </main>
 <script src="market.js"></script><script>
 const $=id=>document.getElementById(id);let history=[];const selectedCode=new URLSearchParams(location.search).get('code')||'513310';$('fundCode').textContent=selectedCode+' · 上海';$('fundName').textContent=selectedCode;$('chart').setAttribute('aria-label',selectedCode+' 最新成交价折线图');
+if(new URLSearchParams(location.search).get('from')==='search'){const back=document.querySelector('main>a');back.href='search.html';back.textContent='\u2190 \u8fd4\u56de\u884c\u60c5\u67e5\u8be2';}
 const formatPrice=v=>typeof v==='number'&&v>0?v.toFixed(selectedCode==='000001'?2:3):'--';
 function renderBook(q){if(selectedCode==='000001'){const table=$('book').closest('table');table.style.display='none';let info=$('indexInfo');if(!info){info=document.createElement('div');info.id='indexInfo';info.style.cssText='padding:24px 18px;line-height:2.6;color:var(--muted)';table.parentElement.append(info)}info.textContent=q?'\u6628\u6536 '+q.previous_close.toFixed(2)+' \u70b9 | \u6700\u65b0 '+q.price.toFixed(2)+' \u70b9\n\u4e0a\u8bc1\u6307\u6570\u65e0\u4e70\u5356\u4e94\u6863': '\u7b49\u5f85\u6307\u6570\u884c\u60c5';info.style.whiteSpace='pre-line';return;}$('book').replaceChildren();for(const side of ['asks','bids']){const indices=side==='asks'?[4,3,2,1,0]:[0,1,2,3,4];for(const i of indices){const item=q?.[side]?.[i]||{};const tr=document.createElement('tr');const name=document.createElement('td');name.textContent=(side==='asks'?'卖':'买')+(i+1);name.className=side==='asks'?'sell':'buy';const price=document.createElement('td');price.textContent=formatPrice(item.price);price.style.color=item.price&&q.previous_close?(item.price>q.previous_close?'var(--red)':item.price<q.previous_close?'var(--green)':'var(--text)'):'var(--muted)';const volume=document.createElement('td');volume.textContent=typeof item.volume==='number'?item.volume.toLocaleString('zh-CN'):'--';tr.append(name,price,volume);$('book').append(tr)}}}
 // Use Shanghai trading time and compress the 90-minute lunch break.
