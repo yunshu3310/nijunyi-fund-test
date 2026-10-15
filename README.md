@@ -1,16 +1,3 @@
-# 倪俊毅基金测试 · 简易量化工作台
+# Fund market and holdings
 
-免费静态网站：使用 HTML、CSS、JavaScript 和腾讯公开行情接口，无需银行卡或付费服务器。
-
-上传本目录的所有文件到 GitHub 公开仓库，进入 Settings → Pages，选择从 main 分支根目录部署。
-部署成功后使用 GitHub 提供的 Pages 地址。行情接口的跨域访问、频率限制和可用性由数据源决定。
-
-功能：双均线回测、含佣金及滑点的资产曲线、最大回撤、交易记录、CSV 导出、本浏览器模拟账户。
-保留三只 ETF 与上证指数的走势、盘口、鼠标光标、午休时间压缩和基金每日规则评价。
-
-回测使用前一完整交易日收盘生成交叉信号，在下一交易日开盘买卖，按100份整手计算。
-不计现金利息，不强制期末卖出，不模拟涨跌停、流动性与税费差异；前复权数据不单独计分红现金流。
-费率是假设参数；资金曲线不代表真实可实现收益，也未包含所有交易风险。完整日线不足会明确报错。
-
-模拟账户与日评价缓存在访问者自己的浏览器，互相隔离；不会同步银河证券账户或自动下单。
-没有服务器常驻采集，关闭页面后停止刷新；开盘以来的分钟走势从接口补齐。
+Static GitHub Pages website. Holdings stay in browser localStorage. Amount is yesterday-close market value; shares=amount/previous_close; daily profit=shares*(price-previous_close). Quotes may be delayed. No brokerage sync or live orders.
