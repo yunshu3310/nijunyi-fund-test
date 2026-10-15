@@ -3,12 +3,12 @@ try{const stored=JSON.parse(localStorage.getItem(holdingKey)||'[]');if(Array.isA
 const hMoney=v=>v.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
 const hColor=v=>v>0?'#ff414d':v<0?'#19cc88':'#e8edf4';
 function saveHoldings(items){try{localStorage.setItem(holdingKey,JSON.stringify(items));holdingItems=items;}catch(e){throw Error('保存失败，请允许浏览器本地存储');}}
-function parseHoldingQuote(text,code){const ex=HoldingsCore.exchange(code);return marketParse(text.replace('v_'+ex+code+'=','v_sh'+code+'='),code);}
+function parseHoldingQuote(text,code){HoldingsCore.exchange(code);return marketParse(text,code);}
 async function getHoldingQuote(code){return parseHoldingQuote(await marketRequest('https://qt.gtimg.cn/q='+HoldingsCore.exchange(code)+code,'gbk'),code);}
 function renderHoldings(){let profit=0,value=0,missing=0;const body=H('holdingRows');body.replaceChildren();
  for(const item of holdingItems){const q=holdingFailed.has(item.code)?null:holdingQuotes[item.code],v=HoldingsCore.value(item,q);if(v){profit+=v.profit;value+=v.value;}else missing++;
   const tr=document.createElement('tr'),cells=[item.code+' '+item.name,hMoney(item.amount),q?q.price.toFixed(3):'--',v?((v.rate>=0?'+':'')+(v.rate*100).toFixed(2)+'%'):'--',v?((v.profit>=0?'+':'')+hMoney(v.profit)):'--',v?hMoney(v.value):'--',q?q.quote_time.slice(11):'等待行情'];
-  cells.forEach((text,index)=>{const td=document.createElement('td');td.textContent=text;if(v&&(index===3||index===4))td.style.color=hColor(v.profit);tr.append(td)});
+  cells.forEach((text,index)=>{const td=document.createElement('td');if(index===0){const link=document.createElement('a');link.className='holding-detail';link.href='fund.html?code='+encodeURIComponent(item.code);link.textContent=text+' ↗';link.title='查看分时走势与买卖五档';td.append(link);}else td.textContent=text;if(v&&(index===3||index===4))td.style.color=hColor(v.profit);tr.append(td)});
   const td=document.createElement('td'),button=document.createElement('button');button.className='delete-holding';button.textContent='删除';button.onclick=()=>{try{saveHoldings(holdingItems.filter(i=>i.id!==item.id));renderHoldings();}catch(e){H('holdingStatus').textContent=e.message;}};td.append(button);tr.append(td);body.append(tr);
  }
  if(!holdingItems.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=8;td.textContent='暂无持仓，输入基金代码和金额即可添加';td.style.color='#8a96a8';tr.append(td);body.append(tr);}

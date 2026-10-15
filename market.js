@@ -2,13 +2,14 @@
 const marketCodes = ['513310', '515050', '588170', '000001'];
 const marketNames = {'513310':'中韩半导体ETF华泰柏瑞','515050':'通信ETF华夏','588170':'科创半导体ETF华夏','000001':'上证指数'};
 const marketTicks = new Map(), marketMinutes = new Map(), marketComments = new Map();
+function marketExchange(code){if(code==='000001')return 'sh';if(!/^\d{6}$/.test(code)||!(/^(5\d|15|16|18)/.test(code)))throw Error('不支持的场内基金代码');return code[0]==='5'?'sh':'sz';}
 async function marketRequest(url, encoding='utf-8') {
   const r = await fetch(url, {signal:AbortSignal.timeout(10000)});
   if(!r.ok) throw Error('行情接口返回 '+r.status);
   return new TextDecoder(encoding).decode(await r.arrayBuffer());
 }
 function marketParse(text, code) {
-  const match = text.match(new RegExp('v_sh'+code+'="([^\"]+)"'));
+  const match = text.match(new RegExp('v_'+marketExchange(code)+code+'="([^\"]+)"'));
   if(!match) throw Error('暂无 '+code+' 行情');
   const f=match[1].split('~');
   if(f[2]!==code||!Number.isFinite(Number(f[3]))||Number(f[3])<=0) throw Error('行情数据异常');
@@ -21,7 +22,8 @@ async function marketHistory(code, quote) {
   const cached=marketMinutes.get(code);
   if(!cached||Date.now()-cached.updated>30000||cached.day!==quote.quote_time.slice(0,10)) {
     try {
-      const data=JSON.parse(await marketRequest('https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=sh'+code)).data['sh'+code].data;
+      const symbol=marketExchange(code)+code;
+      const data=JSON.parse(await marketRequest('https://web.ifzq.gtimg.cn/appstock/app/minute/query?code='+symbol)).data[symbol].data;
       const day=data.date.slice(0,4)+'-'+data.date.slice(4,6)+'-'+data.date.slice(6,8);
       const points=data.data.map(line=>{const v=line.split(' ');return {time:day+'T'+v[0].slice(0,2)+':'+v[0].slice(2)+':00',price:Number(v[1])}}).filter(p=>p.time<=quote.quote_time&&p.price>0);
       marketMinutes.set(code,{day,points,updated:Date.now()});
@@ -44,7 +46,8 @@ async function marketComment(code) {
   try {
     let stored=null;try{stored=JSON.parse(localStorage.getItem(key))}catch(e){}
     if(stored){marketComments.set(key,stored);return stored;}
-    const d=JSON.parse(await marketRequest('https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=sh'+code+',day,,,40,qfq')).data['sh'+code];
+    const symbol=marketExchange(code)+code;
+    const d=JSON.parse(await marketRequest('https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param='+symbol+',day,,,40,qfq')).data[symbol];
     const bars=(d.qfqday||d.day||[]).filter(r=>r[0]<day).sort((a,b)=>a[0].localeCompare(b[0]));
     if(bars.length<20)throw Error('数据不足');
     const closes=bars.slice(-20).map(r=>Number(r[2]));if(closes.some(v=>!Number.isFinite(v)||v<=0))throw Error('价格无效');
@@ -64,8 +67,8 @@ async function marketFetch(path) {
     result=marketCodes.map(code=>{try{const quote=marketParse(text,code);return {code,name:quote.name,quote,error:null};}catch(e){return {code,name:marketNames[code],quote:null,error:e.message};}});
   } else {
     const code=new URL(path,location.origin).searchParams.get('code');
-    if(!marketCodes.includes(code))throw Error('不支持的代码');
-    const quote=marketParse(await marketRequest('https://qt.gtimg.cn/q=sh'+code,'gbk'),code);
+    const symbol=marketExchange(code)+code;
+    const quote=marketParse(await marketRequest('https://qt.gtimg.cn/q='+symbol,'gbk'),code);
     let history=[],error=null;
     try{history=await marketHistory(code,quote);}catch(e){error='分时数据暂不可用，正在重试';}
     result={quote,history,error,comment:await marketComment(code)};
