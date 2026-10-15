@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>倪俊毅基金测试</title>
+<style>
+:root{color-scheme:dark;--bg:#101318;--panel:#151a21;--border:#2b3543;--text:#e8edf4;--muted:#8a96a8;--red:#ff414d;--green:#19cc88;--yellow:#ffd24a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",sans-serif}header{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 32px;border-bottom:1px solid var(--border)}header h1{font-size:20px;margin:0}.live{font-size:12px;color:var(--muted)}.live:before{content:"";display:inline-block;width:7px;height:7px;background:var(--green);border-radius:50%;margin-right:8px}main{max-width:1800px;margin:auto;padding:28px 32px}.ticker{font-size:19px;font-weight:600}.code{color:var(--muted);font:16px Consolas,monospace;margin-left:12px}.quote{display:flex;align-items:center;gap:48px;padding:22px 0 28px}.label{font-size:12px;color:var(--muted)}#price{font:bold clamp(44px,5vw,72px) Consolas,monospace;color:var(--red);margin-top:5px;line-height:1.1}#change{font:22px Consolas,monospace;margin-bottom:12px}#quoteTime{font-size:12px;color:var(--muted)}.grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:20px}.panel{background:var(--panel);border:1px solid var(--border)}.panel-head{height:48px;padding:14px 18px;border-bottom:1px solid var(--border);font-size:14px;display:flex;justify-content:space-between}.panel-head span{color:var(--muted);font-size:12px}.chart-wrap{height:clamp(340px,54vh,660px);position:relative}canvas{display:block;width:100%;height:100%}#empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted)}table{width:100%;border-collapse:collapse;font-size:14px}th{font-size:12px;font-weight:400;color:var(--muted)}td,th{text-align:right;padding:12px 18px}td:first-child,th:first-child{text-align:left}td{font-family:Consolas,"Microsoft YaHei",monospace}tbody tr:nth-child(6){border-top:1px solid var(--border)}tbody tr:hover{background:#202733}.buy{color:var(--red)}.sell{color:var(--green)}.muted{color:var(--muted)}#status{font-size:12px;padding:18px 0;color:var(--muted)}footer{font-size:12px;color:var(--muted);line-height:1.9;border-top:1px solid var(--border);padding-top:16px}@media(max-width:850px){header{padding:0 16px}header h1{font-size:17px}main{padding:22px 16px}.grid{grid-template-columns:1fr}.quote{gap:24px}.chart-wrap{height:360px}.live{display:none}}
+.grid>*{min-width:0}.chart-wrap{overflow:hidden;min-width:0}canvas{min-width:0}</style>
+</head>
+<body>
+<header><h1>倪俊毅基金测试</h1><div class="live">成交价 · 买卖五档 · 每秒尝试刷新</div></header>
+<main>
+<a href="market.html" style="display:inline-block;color:var(--muted);text-decoration:none;margin-bottom:20px">← 返回基金选择</a><div class="ticker"><span id="fundName">基金行情</span><span class="code" id="fundCode"></span></div>
+<div class="quote"><div><div class="label" id="priceLabel">最新成交价 / 元</div><div id="price">--</div></div><div><div id="change">--</div><div id="quoteTime">等待行情连接</div></div></div>
+<div class="grid"><section class="panel"><div class="panel-head">成交价走势<span>当天开盘至今</span></div><div class="chart-wrap"><canvas id="chart" aria-label="513310 最新成交价折线图" role="img"></canvas><div id="empty">正在获取真实行情……</div></div></section><section class="panel"><div class="panel-head">买卖五档<span>挂单数量：手</span></div><table><thead><tr><th>档位</th><th>委托价</th><th>数量</th></tr></thead><tbody id="book"></tbody></table></section></div>
+<section id="dailyComment" class="panel" style="padding:18px;margin-top:20px"><div id="commentText" style="font-size:16px">\u6b63\u5728\u751f\u6210\u6bcf\u65e5\u8bc4\u4ef7</div><div id="commentMeta" style="font-size:12px;color:var(--muted);margin-top:10px"></div></section><div id="status" role="status">正在连接本机行情服务……</div>
+<footer>数据来源：腾讯公开行情。五档为委托挂单，并非已成交记录。行情可能延迟，没有新成交时价格保持不变。<br>价格线自动补齐当天开盘后的分钟走势，打开页面后追加实时报价；每秒尝试更新，网络请求较慢时实际间隔可能更长。</footer>
+</main>
+<script src="market.js"></script><script>
+const $=id=>document.getElementById(id);let history=[];const selectedCode=new URLSearchParams(location.search).get('code')||'513310';$('fundCode').textContent=selectedCode+' · 上海';$('fundName').textContent=selectedCode;$('chart').setAttribute('aria-label',selectedCode+' 最新成交价折线图');
+const formatPrice=v=>typeof v==='number'&&v>0?v.toFixed(selectedCode==='000001'?2:3):'--';
+function renderBook(q){if(selectedCode==='000001'){const table=$('book').closest('table');table.style.display='none';let info=$('indexInfo');if(!info){info=document.createElement('div');info.id='indexInfo';info.style.cssText='padding:24px 18px;line-height:2.6;color:var(--muted)';table.parentElement.append(info)}info.textContent=q?'\u6628\u6536 '+q.previous_close.toFixed(2)+' \u70b9 | \u6700\u65b0 '+q.price.toFixed(2)+' \u70b9\n\u4e0a\u8bc1\u6307\u6570\u65e0\u4e70\u5356\u4e94\u6863': '\u7b49\u5f85\u6307\u6570\u884c\u60c5';info.style.whiteSpace='pre-line';return;}$('book').replaceChildren();for(const side of ['asks','bids']){const indices=side==='asks'?[4,3,2,1,0]:[0,1,2,3,4];for(const i of indices){const item=q?.[side]?.[i]||{};const tr=document.createElement('tr');const name=document.createElement('td');name.textContent=(side==='asks'?'卖':'买')+(i+1);name.className=side==='asks'?'sell':'buy';const price=document.createElement('td');price.textContent=formatPrice(item.price);price.style.color=item.price&&q.previous_close?(item.price>q.previous_close?'var(--red)':item.price<q.previous_close?'var(--green)':'var(--text)'):'var(--muted)';const volume=document.createElement('td');volume.textContent=typeof item.volume==='number'?item.volume.toLocaleString('zh-CN'):'--';tr.append(name,price,volume);$('book').append(tr)}}}
+// Use Shanghai trading time and compress the 90-minute lunch break.
+function sessionSeconds(timestamp){
+ const time=timestamp.slice(11,19).split(':').map(Number);
+ return time[0]*3600+time[1]*60+(time[2]||0);
+}
+function isTradingPoint(point){
+ const t=sessionSeconds(point.time);
+ return (t>=34200&&t<=41400)||(t>=46800&&t<=54000);
+}
+function tradingSeconds(timestamp){
+ const t=sessionSeconds(timestamp);
+ return t<=41400?t-34200:t>=46800?t-39600:7200;
+}
+function tradingLabel(value){
+ const t=Math.round(value<7200?value+34200:value+39600);
+ return [Math.floor(t/3600),Math.floor(t%3600/60),t%60].map(v=>String(v).padStart(2,'0')).join(':');
+}
+
+let chartPointer=null,chartPreviousClose=null;
+function changePercent(price){
+ return Number.isFinite(chartPreviousClose)&&chartPreviousClose>0?(price/chartPreviousClose-1)*100:null;
+}
+function percentLabel(price){const value=changePercent(price);return value===null?'--':(value>=0?'+':'')+value.toFixed(2)+'%';}
+function changeColor(price){const value=changePercent(price);return value===null||Math.abs(value)<1e-10?'#8a96a8':value>0?'#ff414d':'#19cc88';}
+
+const chartTooltip=document.createElement('div');
+chartTooltip.id='chartTooltip';chartTooltip.hidden=true;
+chartTooltip.style.cssText='position:absolute;pointer-events:none;background:#202733;border:1px solid #627087;padding:8px 12px;border-radius:4px;color:#e8edf4;font:13px Consolas,monospace;white-space:pre;z-index:2';
+$('chart').parentElement.append(chartTooltip);
+$('chart').style.cursor='crosshair';
+$('chart').addEventListener('pointermove',event=>{const rect=$('chart').getBoundingClientRect();chartPointer={x:event.clientX-rect.left,y:event.clientY-rect.top};draw();});
+$('chart').addEventListener('pointerleave',()=>{chartPointer=null;draw();});
+function drawCursor(ctx,points,x,y,w,h,L,R,T,B){
+ chartTooltip.hidden=true;
+ if(!chartPointer||chartPointer.x<L||chartPointer.x>w-R||chartPointer.y<T||chartPointer.y>h-B)return;
+ // Snap to the nearest real quote along the compressed trading-time axis.
+ let left=0,right=points.length-1;
+ while(left<right){const mid=Math.floor((left+right)/2);if(x(tradingSeconds(points[mid].time))<chartPointer.x)left=mid+1;else right=mid;}
+ let index=left;
+ if(index>0&&Math.abs(x(tradingSeconds(points[index-1].time))-chartPointer.x)<Math.abs(x(tradingSeconds(points[index].time))-chartPointer.x))index--;
+ const point=points[index],xx=x(tradingSeconds(point.time)),yy=y(point.price);
+ ctx.save();ctx.strokeStyle='#aab6c8';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+ ctx.beginPath();ctx.moveTo(xx,T);ctx.lineTo(xx,h-B);ctx.moveTo(L,yy);ctx.lineTo(w-R,yy);ctx.stroke();ctx.setLineDash([]);
+ ctx.fillStyle='#ffd24a';ctx.beginPath();ctx.arc(xx,yy,5,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#101318';ctx.lineWidth=2;ctx.stroke();
+ const time=point.time.slice(11,19),price=point.price.toFixed(selectedCode==='000001'?2:3);
+ ctx.font='12px Consolas,monospace';ctx.fillStyle='#344052';ctx.fillRect(Math.max(L,Math.min(xx-35,w-R-70)),h-B,70,22);
+ ctx.textAlign='center';ctx.fillStyle='#ffffff';ctx.fillText(time,Math.max(L+35,Math.min(xx,w-R-35)),h-B+15);
+ ctx.fillStyle='#344052';ctx.fillRect(0,yy-10,L-3,20);ctx.fillStyle='#ffffff';ctx.textAlign='right';ctx.fillText(price,L-9,yy+4);ctx.fillStyle='#344052';ctx.fillRect(w-R+2,yy-10,R-4,20);ctx.fillStyle=changeColor(point.price);ctx.textAlign='left';ctx.fillText(percentLabel(point.price),w-R+8,yy+4);ctx.restore();
+ chartTooltip.textContent=time+'\n'+price+(selectedCode==='000001'?' \u70b9':' \u5143');chartTooltip.textContent+='\n'+percentLabel(point.price)+' \u8f83\u6628\u6536';chartTooltip.dataset.change=String(changePercent(point.price));chartTooltip.hidden=false;
+ chartTooltip.style.left=Math.max(5,Math.min(xx+14,w-chartTooltip.offsetWidth-6))+'px';
+ chartTooltip.style.top=Math.max(5,Math.min(yy-48,h-chartTooltip.offsetHeight-6))+'px';
+ chartTooltip.dataset.time=point.time;chartTooltip.dataset.price=String(point.price);
+}
+
+function draw(){
+ const c=$('chart'),box=c.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+ c.width=Math.round(box.width*dpr);c.height=Math.round(box.height*dpr);
+ const ctx=c.getContext('2d');ctx.scale(dpr,dpr);
+ const w=box.width,h=box.height,L=64,R=78,T=36,B=42;
+ ctx.clearRect(0,0,w,h);
+ chartTooltip.hidden=true;const points=history.filter(isTradingPoint);if(!points.length)return;
+ const end=tradingSeconds(points.at(-1).time);
+ let start=tradingSeconds(points[0].time);if(end-start<10)start=end-10;
+ const prices=points.map(p=>p.price),low=Math.min(...prices),high=Math.max(...prices);
+ const pad=Math.max((high-low)*.18,.003),min=low-pad,max=high+pad;
+ const x=t=>L+(t-start)/(end-start)*(w-L-R),y=p=>T+(max-p)/(max-min)*(h-T-B);
+ ctx.font='12px Consolas,monospace';ctx.fillStyle='#8a96a8';ctx.textAlign='left';ctx.fillText(selectedCode==='000001'?'\u70b9\u4f4d':'\u4ef7\u683c',6,18);ctx.fillText('\u8f83\u6628\u6536',w-R+8,18);
+ for(let i=0;i<=5;i++){
+  const yy=T+(h-T-B)*i/5;ctx.strokeStyle='#2b3543';ctx.setLineDash([2,4]);
+  ctx.beginPath();ctx.moveTo(L,yy);ctx.lineTo(w-R,yy);ctx.stroke();
+  const axisPrice=max-(max-min)*i/5;ctx.fillStyle='#8a96a8';ctx.textAlign='right';ctx.fillText(axisPrice.toFixed(selectedCode==='000001'?2:3),L-10,yy+4);
+  ctx.textAlign='left';ctx.fillStyle=changeColor(axisPrice);ctx.fillText(percentLabel(axisPrice),w-R+8,yy+4);
+ }
+ for(let i=0;i<5;i++){
+  const time=start+(end-start)*i/4,xx=x(time);ctx.fillStyle='#8a96a8';
+  ctx.textAlign=i===0?'left':i===4?'right':'center';ctx.fillText(tradingLabel(time),xx,h-16);
+ }
+ if(chartPreviousClose>=min&&chartPreviousClose<=max){ctx.strokeStyle='#68768a';ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(L,y(chartPreviousClose));ctx.lineTo(w-R,y(chartPreviousClose));ctx.stroke();}
+ ctx.setLineDash([]);ctx.strokeStyle='#ffd24a';ctx.lineWidth=1.6;ctx.beginPath();
+ points.forEach((p,i)=>{const xx=x(tradingSeconds(p.time)),yy=y(p.price);i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy)});ctx.stroke();
+ const last=points.at(-1);ctx.fillStyle='#ff414d';ctx.beginPath();ctx.arc(x(end),y(last.price),3,0,Math.PI*2);ctx.fill();
+ drawCursor(ctx,points,x,y,w,h,L,R,T,B);
+}
+function renderComment(comment){
+ $('dailyComment').hidden=selectedCode==='000001';
+ if(!comment){$('commentText').textContent='\u6b63\u5728\u83b7\u53d6\u6bcf\u65e5\u8bc4\u4ef7';return;}
+ $('commentText').textContent=comment.text;
+ $('commentText').style.color=comment.action==='\u4e70\u5165'?'var(--red)':comment.action==='\u5356\u51fa'?'var(--green)':'var(--text)';
+ $('commentMeta').textContent=comment.day+' | '+(comment.based_on?'\u4f9d\u636e '+comment.based_on+' \u6536\u76d8 | ':'')+'\u6bcf\u65e5\u66f4\u65b0\u00b7\u5747\u7ebf\u89c4\u5219\u53c2\u8003\uff0c\u4e0d\u4fdd\u8bc1\u6536\u76ca';
+}
+async function refresh(){const started=performance.now();try{const response=await marketFetch('/api/quote?code='+encodeURIComponent(selectedCode),{cache:'no-store',signal:AbortSignal.timeout(10000)});if(!response.ok)throw Error('服务返回 '+response.status);const data=await response.json(),q=data.quote;renderComment(data.comment);if(q){chartPreviousClose=Number.isFinite(q.previous_close)&&q.previous_close>0?q.previous_close:null;$('fundName').textContent=q.name;$('price').textContent=formatPrice(q.price);const change=q.previous_close?q.price-q.previous_close:null;$('change').textContent=change===null?'--':`${change>=0?'+':''}${change.toFixed(3)}   ${change>=0?'+':''}${(change/q.previous_close*100).toFixed(2)}%`;$('change').style.color=change>=0?'var(--red)':'var(--green)';const age=(Date.now()-new Date(q.quote_time))/1000;$('quoteTime').textContent='行情时间 '+q.quote_time.replace('T',' ')+(age>120?' · 行情未更新或有延迟':'');renderBook(q);const all=data.history||[];const latest=all.length?new Date(all.at(-1).time).getTime():Date.now();history=all;$('empty').style.display=history.length?'none':'grid';draw()}if(!q&&data.error){$('empty').textContent=data.error;}$('status').textContent=data.error||('已连接 · 每秒尝试刷新 · '+new Date().toLocaleTimeString('zh-CN',{hour12:false}));$('status').style.color=data.error?'var(--red)':'var(--muted)'}catch(error){$('status').textContent='连接失败，保留已有数据并自动重试：'+error.message;$('status').style.color='var(--red)'}finally{setTimeout(refresh,Math.max(0,1000-(performance.now()-started)))}}
+if(selectedCode==='000001'){document.getElementById('priceLabel').textContent='\u6700\u65b0\u6307\u6570 / \u70b9';document.querySelectorAll('.panel-head')[0].firstChild.textContent='\u4e0a\u8bc1\u6307\u6570\u8d70\u52bf';document.querySelectorAll('.panel-head')[1].textContent='\u6307\u6570\u884c\u60c5';}renderBook(null);new ResizeObserver(draw).observe($('chart'));refresh();
+</script>
+</body></html>
